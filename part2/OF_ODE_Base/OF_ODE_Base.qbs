@@ -12,12 +12,12 @@ Project{
         name: { return FileInfo.baseName(sourceDirectory) }
 
         files: [
-            'src/main.cpp',
-            'src/ofApp.cpp',
-            'src/ofApp.h',
+            "src/main.cpp",
+            "src/ofApp.cpp",
+            "src/ofApp.h",
         ]
 
-        of.addons: [
+        of.addons: [ 'ofxAssimpModelLoader'
 
         ]
 

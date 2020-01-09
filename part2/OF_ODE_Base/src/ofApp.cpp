@@ -1,13 +1,17 @@
 #include "ofApp.h"
 //--------------------------------------------------------------
 void ofApp::setup(){
+
+    //Create World ODE
     dInitODE2(0);
     world = dWorldCreate();
     space = dHashSpaceCreate(0);
+    contactgroup = dJointGroupCreate(0);
+    dWorldSetGravity (world,0,0,-0.5);
+    ground = dCreatePlane (space,0,0,1,0);
 
     //Set up player
     player = new Player();
-
 
     // Set up the OpenFrameworks camera
     ofVec3f upVector;
@@ -20,23 +24,13 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
-    if(player->accelerating){
-        player->accel = player->accel + 1;
-    } else {
-        if(player->accel >= 10){
-            player->accel = player->accel - 10;
-        } else if(player->accel){
-            player->accel = 0;
-        }
-    }
-
-    player->x = player->x + (player->accel/100);
+    player->update();
     draw();
 }
 //--------------------------------------------------------------
 void ofApp::draw(){
 
-    ofBackground(20);
+    ofBackground(50, 50, 50, 0);
 
     cam.begin();
 
@@ -49,7 +43,10 @@ void ofApp::draw(){
     ofTranslate(0,0,1);
 
     ofTranslate(0,0,0);
-    ofDrawBox((*player).x,(*player).y, 1, 2, 4, 1);
+    //ofDrawBox((*player).x,(*player).y, 1, 2, 4, 1);
+    player->draw();
+    ofSetColor(255,255,255,255);
+
     ofDisableDepthTest();
     cam.end();
 
@@ -124,9 +121,9 @@ void ofApp::keyPressed(int key){
     switch(key) {
 
     case 'q': ofExit(); break;
-    case OF_KEY_UP: player->accelerating = true; player->accel=100; break;
-    case OF_KEY_LEFT: break;
-    case OF_KEY_RIGHT: break;
+    case OF_KEY_UP: player->accelerating = true; player->speed += 0.3; break;
+    case OF_KEY_LEFT: player->steer += 0.5; break;
+    case OF_KEY_RIGHT: player->steer -= 0.5; break;
     case OF_KEY_DOWN: break;
     }
 
@@ -184,8 +181,28 @@ void ofApp::dragEvent(ofDragInfo dragInfo){
 
 }
 
-
 Player::Player(){
-    ;
+    playerModel.loadModel("Space_ship.dae");
+    playerModel.setScale(0.005,0.005,0.005);
+    playerModel.setRotation(1, 90, 1, 0, 0);
 }
 
+void Player::draw(){
+    playerModel.setPosition(x, y, 1);
+    playerModel.drawFaces();
+}
+
+void Player::update(){
+    if(accelerating){
+        if(accel<600) accel = accel + 1;
+    }
+    else {
+        if(accel >= 10) accel= accel - 1;
+        else accel=0;
+    }
+    x = x + (accel/300);
+}
+
+void Player::rotate(int direction){
+    playerModel.setRotation(playerModel.getNumRotations(), direction*5, 0, 1, 0);
+}

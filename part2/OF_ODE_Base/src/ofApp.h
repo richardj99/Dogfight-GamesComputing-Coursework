@@ -2,20 +2,25 @@
 
 #include "ofMain.h"
 #include "ode/ode.h"
+#include "ofxAssimpModelLoader.h"
 
 class Player{
 public:
     Player();
+    void draw();
+    void update();
+    void rotate(int direction);
 
+    ofxAssimpModelLoader playerModel;
     bool accelerating = false;
     int accel = 0;
     int health = 100;
     int x = 0;
     int y = 0;
 
+    dReal speed,steer;
 
 };
-
 
 class ofApp : public ofBaseApp{
 
@@ -38,10 +43,11 @@ public:
     void gotMessage(ofMessage msg);
 
     ofEasyCam cam;
-
     dWorldID world;
     dSpaceID space;
     Player *player;
+    dJointGroupID contactgroup;
+    dGeomID ground;
 
     /* The actual implementation of the broadphase collision callback;
      * see below for how this works with the ODE library.
