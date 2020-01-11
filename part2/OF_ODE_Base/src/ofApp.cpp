@@ -1,4 +1,13 @@
 #include "ofApp.h"
+
+#define shipMass 1
+#define startZ 0.5
+#define SHIPLENGTH 0.7
+#define SHIPWIDTH 0.5
+#define SHIPHEIGHT 0.2
+
+//TODO: Work on Rotation
+
 //--------------------------------------------------------------
 void ofApp::setup(){
 
@@ -11,7 +20,7 @@ void ofApp::setup(){
     ground = dCreatePlane (space,0,0,1,0);
 
     //Set up player
-    player = new Player();
+    player = new Player(world);
 
     // Set up the OpenFrameworks camera
     ofVec3f upVector;
@@ -24,6 +33,7 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
+    dWorldStep (world,0.05);
     player->update();
     draw();
 }
@@ -37,7 +47,7 @@ void ofApp::draw(){
     ofEnableDepthTest();
 
     ofSetColor(ofColor::grey);
-    ofDrawPlane(100,100);
+    ofDrawPlane(200,200);
 
     ofSetColor(ofColor::black);
     ofTranslate(0,0,1);
@@ -121,7 +131,7 @@ void ofApp::keyPressed(int key){
     switch(key) {
 
     case 'q': ofExit(); break;
-    case OF_KEY_UP: player->accelerating = true; player->speed += 0.3; break;
+    case OF_KEY_UP: player->accelerating = true; if(player->speed<10) player->speed += 0.5; break;
     case OF_KEY_LEFT: player->steer += 0.5; break;
     case OF_KEY_RIGHT: player->steer -= 0.5; break;
     case OF_KEY_DOWN: break;
@@ -181,28 +191,38 @@ void ofApp::dragEvent(ofDragInfo dragInfo){
 
 }
 
-Player::Player(){
+Player::Player(dWorldID world){
     playerModel.loadModel("Space_ship.dae");
     playerModel.setScale(0.005,0.005,0.005);
     playerModel.setRotation(1, 90, 1, 0, 0);
+    body = dBodyCreate(world);
+    dBodySetPosition(body, 0, 0, startZ);
+    dMassSetBox(&mass,1,SHIPLENGTH, SHIPWIDTH, SHIPHEIGHT);
+    dMassAdjust(&mass, shipMass);
+    dBodySetMass(body, &mass);
+    box = dCreateBox(0,SHIPLENGTH,SHIPWIDTH,SHIPHEIGHT);
+    dGeomSetBody(box,body);
+    dBodySetLinearVel(body, 0.1, 0, 0);
 }
 
 void Player::draw(){
-    playerModel.setPosition(x, y, 1);
+    const dReal* pos_ode = dBodyGetPosition(body);
+    const dReal* rot_ode = dBodyGetQuaternion(body);
+    playerModel.setPosition(pos_ode[0], pos_ode[1], pos_ode[3]);
     playerModel.drawFaces();
+    std::cout<< *dBodyGetRotation(body);
 }
 
 void Player::update(){
-    if(accelerating){
-        if(accel<600) accel = accel + 1;
+    if(!accelerating){
+        if(*dBodyGetLinearVel(body) >= 0.1f) speed -= 0.1;
+        else speed = 0;
     }
-    else {
-        if(accel >= 10) accel= accel - 1;
-        else accel=0;
+    if(steer > 360){
+        steer = steer - 360;
     }
-    x = x + (accel/300);
-}
+    const dReal* rot_ode = dBodyGetQuaternion(body);
+    dBodySetQuaternion(body, rot_ode);
 
-void Player::rotate(int direction){
-    playerModel.setRotation(playerModel.getNumRotations(), direction*5, 0, 1, 0);
+    dBodySetLinearVel(body, speed, 0, 0);
 }

@@ -6,7 +6,7 @@
 
 class Player{
 public:
-    Player();
+    Player(dWorldID world);
     void draw();
     void update();
     void rotate(int direction);
@@ -17,8 +17,11 @@ public:
     int health = 100;
     int x = 0;
     int y = 0;
-
-    dReal speed,steer;
+    dBodyID body;
+    dMass mass;
+    dGeomID box;
+    dReal speed=0;
+    dReal steer=0;
 
 };
 
