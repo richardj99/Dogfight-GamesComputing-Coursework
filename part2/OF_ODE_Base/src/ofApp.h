@@ -12,16 +12,20 @@ public:
     void rotate(int direction);
 
     ofxAssimpModelLoader playerModel;
+    ofBoxPrimitive modelBox;
     bool accelerating = false;
+    dReal rotating = 0;
     int accel = 0;
     int health = 100;
     int x = 0;
     int y = 0;
-    dBodyID body;
+    dBodyID body[2];
     dMass mass;
-    dGeomID box;
+    dGeomID box[2];
+    dJointID joint;
     dReal speed=0;
     dReal steer=0;
+    dReal angle=0;
 
 };
 

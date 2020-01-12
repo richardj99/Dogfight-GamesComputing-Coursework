@@ -1,12 +1,12 @@
 #include "ofApp.h"
 
 #define shipMass 1
-#define startZ 0.5
-#define SHIPLENGTH 0.7
-#define SHIPWIDTH 0.5
-#define SHIPHEIGHT 0.2
+#define startZ 0.2
+#define SHIPLENGTH 0.5
+#define SHIPWIDTH 0.4
+#define SHIPHEIGHT 0.15
 
-//TODO: Work on Rotation
+static const dVector3 yunit = { 0, 1, 0 }, zunit = { 0, 0, 1 };
 
 //--------------------------------------------------------------
 void ofApp::setup(){
@@ -16,7 +16,7 @@ void ofApp::setup(){
     world = dWorldCreate();
     space = dHashSpaceCreate(0);
     contactgroup = dJointGroupCreate(0);
-    dWorldSetGravity (world,0,0,-0.5);
+    //dWorldSetGravity (world,0,0,-0.5);
     ground = dCreatePlane (space,0,0,1,0);
 
     //Set up player
@@ -33,13 +33,13 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
-    dWorldStep (world,0.05);
+    dWorldStep (world, 0.05);
     player->update();
     draw();
 }
 //--------------------------------------------------------------
 void ofApp::draw(){
-
+    ofPopMatrix();
     ofBackground(50, 50, 50, 0);
 
     cam.begin();
@@ -59,6 +59,7 @@ void ofApp::draw(){
 
     ofDisableDepthTest();
     cam.end();
+    ofPushMatrix();
 
 }
 //--------------------------------------------------------------
@@ -132,8 +133,8 @@ void ofApp::keyPressed(int key){
 
     case 'q': ofExit(); break;
     case OF_KEY_UP: player->accelerating = true; if(player->speed<10) player->speed += 0.5; break;
-    case OF_KEY_LEFT: player->steer += 0.5; break;
-    case OF_KEY_RIGHT: player->steer -= 0.5; break;
+    case OF_KEY_LEFT: player->angle -= 0.1; break;
+    case OF_KEY_RIGHT: player->angle += 0.1; break;
     case OF_KEY_DOWN: break;
     }
 
@@ -192,37 +193,68 @@ void ofApp::dragEvent(ofDragInfo dragInfo){
 }
 
 Player::Player(dWorldID world){
+    //modelBox.setScale(SHIPLENGTH, SHIPWIDTH, SHIPHEIGHT);
+    modelBox.setScale(0.05*(SHIPLENGTH+0.11),0.05*SHIPWIDTH,0.05*SHIPHEIGHT);
+    modelBox.setPosition(0,0,startZ);
+
     playerModel.loadModel("Space_ship.dae");
     playerModel.setScale(0.005,0.005,0.005);
-    playerModel.setRotation(1, 90, 1, 0, 0);
-    body = dBodyCreate(world);
-    dBodySetPosition(body, 0, 0, startZ);
+
+    body[0] = dBodyCreate(world);
+    dBodySetPosition(body[0], 0, 0, startZ);
     dMassSetBox(&mass,1,SHIPLENGTH, SHIPWIDTH, SHIPHEIGHT);
     dMassAdjust(&mass, shipMass);
-    dBodySetMass(body, &mass);
-    box = dCreateBox(0,SHIPLENGTH,SHIPWIDTH,SHIPHEIGHT);
-    dGeomSetBody(box,body);
-    dBodySetLinearVel(body, 0.1, 0, 0);
+    dBodySetMass(body[0], &mass);
+    box[0] = dCreateBox(0,SHIPLENGTH,SHIPWIDTH,SHIPHEIGHT);
+    dGeomSetBody(box[0],body[0]);
+    dBodySetLinearVel(body[0], 0.1, 0, 0);
+
+    //Thruster
+    body[1] = dBodyCreate(world);
+    dBodySetPosition(body[1], 0.5*SHIPLENGTH, 0, startZ);
+    box[1] = dCreateBox(0,0.1,0.1,0.1);
+    dGeomSetBody(box[1],body[1]);
+
+    //Create FixedJoint
+    joint = dJointCreateFixed(world,0);
+    dJointAttach(joint, body[0], body[1]);
+    const dReal *a = dBodyGetPosition(body[1]);
 }
 
 void Player::draw(){
-    const dReal* pos_ode = dBodyGetPosition(body);
-    const dReal* rot_ode = dBodyGetQuaternion(body);
-    playerModel.setPosition(pos_ode[0], pos_ode[1], pos_ode[3]);
+    const dReal* pos_ode = dBodyGetPosition(body[0]);
+    const dReal* rot_ode = dBodyGetQuaternion(body[0]);
+
+    ofQuaternion q(rot_ode[1], rot_ode[2], rot_ode[3], rot_ode[0]);
+    float theta, x, y, z;
+    q.getRotate(theta, x, y, z);
+    playerModel.setRotation(1, 90, 1, 0, 0);
+    playerModel.setRotation(1, theta, x, y, z);
+    modelBox.setGlobalOrientation(glm::quat(rot_ode[0],rot_ode[1],rot_ode[2],rot_ode[3]));
     playerModel.drawFaces();
-    std::cout<< *dBodyGetRotation(body);
+    modelBox.setPosition(pos_ode[0], pos_ode[1], pos_ode[2]);
+    playerModel.setPosition(pos_ode[0], pos_ode[1], pos_ode[2]);
+    //modelBox.draw();
 }
 
 void Player::update(){
+    dMatrix3 R;
+    if(angle != 0.0f){
+        if(angle >= 6.4) angle = angle - 6.4;
+        else if(angle<= -6.4) angle = angle + 6.4;
+        dRFromEulerAngles(R, 0, 0, angle);
+        dBodySetRotation(body[0], R);
+    }
     if(!accelerating){
-        if(*dBodyGetLinearVel(body) >= 0.1f) speed -= 0.1;
+        if(*dBodyGetLinearVel(body[0]) >= 0.5f) speed -= 0.5f;
         else speed = 0;
     }
-    if(steer > 360){
-        steer = steer - 360;
-    }
-    const dReal* rot_ode = dBodyGetQuaternion(body);
-    dBodySetQuaternion(body, rot_ode);
+    const dReal* rot_ode = dBodyGetQuaternion(body[0]);
+    dBodySetQuaternion(body[0], rot_ode);
 
-    dBodySetLinearVel(body, speed, 0, 0);
+    //dBodySetLinearVel(body[0], speed, 0, 0);
+    cout<<speed<<endl;
+    dBodyAddForce(body[0], speed*rot_ode[1], speed*rot_ode[2], 0.0);
+    //dJointSetFixedParam (joint,dParamVel2,-speed);
+    //dJointSetFixedParam (joint,dParamFMax2,0.3);
 }
