@@ -8,8 +8,9 @@ class Player{
 public:
     Player(dWorldID world);
     void draw();
-    void update();
-    void rotate(int direction);
+    void update(int keys[]);
+
+    dReal* getLocation();
 
     ofxAssimpModelLoader playerModel;
     ofBoxPrimitive modelBox;
@@ -17,15 +18,28 @@ public:
     dReal rotating = 0;
     int accel = 0;
     int health = 100;
-    int x = 0;
-    int y = 0;
-    dBodyID body[2];
+    dBodyID body;
     dMass mass;
-    dGeomID box[2];
+    dGeomID box;
     dJointID joint;
     dReal speed=0;
     dReal steer=0;
     dReal angle=0;
+    float camX, camY, camZ, rad;
+
+};
+
+class Asteroid{
+public:
+    Asteroid(dWorldID world);
+    void update();
+    void draw();
+
+    ofBoxPrimitive asteroidBox;
+    dBodyID body;
+    dMass mass;
+    dGeomID box;
+    dReal speed=5;
 
 };
 
@@ -50,19 +64,20 @@ public:
     void gotMessage(ofMessage msg);
 
     ofEasyCam cam;
+    ofLight light;
     dWorldID world;
     dSpaceID space;
     Player *player;
+    Asteroid* asteroids[1];
     dJointGroupID contactgroup;
     dGeomID ground;
+
+    int keys[65536];
 
     /* The actual implementation of the broadphase collision callback;
      * see below for how this works with the ODE library.
      */
-    void collide (dGeomID o1, dGeomID o2);
-
-    void drawODEDemoBox(const dReal*pos_ode, const dQuaternion rot_ode, const dReal*sides_ode);
-    void drawODEDemoCylinder(const dReal*pos_ode, const dQuaternion rot_ode, dReal len, dReal rad);    
+    void collide (dGeomID o1, dGeomID o2);   
 };
 /* ODE requires a global function to use as the collision callback; this
  * function, combined with the ofApp pointer, allows us to put the collision
