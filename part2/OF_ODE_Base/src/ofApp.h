@@ -6,7 +6,7 @@
 
 class Player{
 public:
-    Player(dWorldID world);
+    Player(dWorldID world, dSpaceID space);
     void draw();
     void update(int keys[]);
 
@@ -25,13 +25,14 @@ public:
     dReal speed=0;
     dReal steer=0;
     dReal angle=0;
+    dSpaceID shipSpace;
     float camX, camY, camZ, rad;
 
 };
 
 class Asteroid{
 public:
-    Asteroid(dWorldID world);
+    Asteroid(dWorldID world, dSpaceID space);
     void update();
     void draw();
 
@@ -40,6 +41,7 @@ public:
     dMass mass;
     dGeomID box;
     dReal speed=5;
+    dSpaceID astSpace;
 
 };
 

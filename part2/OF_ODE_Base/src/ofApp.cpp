@@ -1,7 +1,7 @@
 #include "ofApp.h"
 
-#define SHIPMASS 1
-#define STARTZ 0.2
+#define SHIPMASS 10.01
+#define STARTZ 1.2
 #define SHIPLENGTH 0.5
 #define SHIPWIDTH 0.4
 #define SHIPHEIGHT 0.15
@@ -18,36 +18,30 @@ void ofApp::setup(){
     //Create World ODE
     dInitODE2(0);
     world = dWorldCreate();
+    dWorldSetGravity(world,0.0,0.0,-0.5);
     space = dHashSpaceCreate(0);
     contactgroup = dJointGroupCreate(0);
-    //dWorldSetGravity (world,0,0,-0.5);
     ground = dCreatePlane (space,0,0,1,0);
 
     //Set up player
-    player = new Player(world);
-    //keys[OF_KEY_LEFT] = 0;
+    player = new Player(world, space);
 
     //Set up asteroids
-    asteroids[0] = new Asteroid(world);
+    asteroids[0] = new Asteroid(world, space);
 
     // Set up the OpenFrameworks camera
     cam.setAutoDistance(false);
-    //cam.setPosition(0,-5,);
 
-    //Set up Lamp
-    //ofVec3f lightVector;
-    //lightVector.set(0,0,1);
-
-    //light.lookAt({0,0,0}, lightVector);
-    //light.setSpotlight(45.f, 100.0f);
+    //light.setSpotlight(45.f, 100.0f)
     light.setPosition(0,0,10);
 
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
-    dWorldStep (world, 0.05);
     player->update(keys);
+    dSpaceCollide (space,0,&nearCallback);
+    dWorldStep (world, 0.05);
 }
 //--------------------------------------------------------------
 void ofApp::draw(){
@@ -55,7 +49,7 @@ void ofApp::draw(){
     ofBackground(00, 00, 00, 00);
 
     ofVec3f upVector;
-    cam.setPosition((player->camX - (sin(player->rad)*10.0)), (player->camY - (cos(player->rad)*10.0)), 7);
+    cam.setPosition((player->camX - (sin(player->rad)*10.0)), (player->camY - (cos(player->rad)*10.0)), 4);
     upVector.set(0.0,  0.0, 1.0);
     cam.lookAt({player->camX, player->camY, 0.5}, upVector);
     cam.begin();
@@ -88,14 +82,37 @@ void ofApp::exit() {
 }
 //--------------------------------------------------------------
 static void nearCallback (void *, dGeomID o1, dGeomID o2) {
-
     myApp->collide(o1,o2);
 }
 
 
 void ofApp::collide(dGeomID o1, dGeomID o2)
 {
+    int i,n;
 
+    // only collide things with the ground
+    int g1 = (o1 == asteroids[0]->box || o1 == ground);
+    int g2 = (o2 == asteroids[0]->box || o2 == ground);
+    if(!(g1 ^ g2)) return;
+
+    const int N = 10;  // maximum number of contacts to be generated
+    dContact contact[N];
+    n = dCollide(o1,o2,N,&contact[0].geom,sizeof(dContact));
+    if (n > 0) {  // if there is a collision
+      for (i=0; i<n; i++) { // populate the array with contact points
+        contact[i].surface.mode = dContactSlip1 | dContactSlip2 |
+          dContactSoftERP | dContactSoftCFM | dContactApprox1;
+        contact[i].surface.mu = dInfinity;
+        contact[i].surface.slip1 = 0.5;
+        contact[i].surface.slip2 = 0.5;
+        contact[i].surface.soft_erp = 0.2;
+        contact[i].surface.soft_cfm = 0.1;
+        dJointID c = dJointCreateContact (world,contactgroup,&contact[i]);
+        dJointAttach (c,
+                      dGeomGetBody(contact[i].geom.g1),
+                      dGeomGetBody(contact[i].geom.g2));
+      }
+    }
 }
 
 
@@ -154,7 +171,7 @@ void ofApp::dragEvent(ofDragInfo dragInfo){
 
 }
 
-Player::Player(dWorldID world){
+Player::Player(dWorldID world, dSpaceID space){
     modelBox.setScale(0.05*(SHIPLENGTH+0.11),0.05*SHIPWIDTH,0.05*SHIPHEIGHT);
     modelBox.setPosition(0,0,STARTZ);
 
@@ -162,13 +179,16 @@ Player::Player(dWorldID world){
     playerModel.setScale(0.005,0.005,0.005);
 
     body = dBodyCreate(world);
-    dBodySetPosition(body, 0, 0, STARTZ+0.2);
-    dMassSetBox(&mass,1,SHIPLENGTH*0.05, SHIPWIDTH*0.05, SHIPHEIGHT*0.05);
+    dBodySetPosition(body, 0, 0, STARTZ);
+    dMassSetBox(&mass,1,SHIPLENGTH, SHIPWIDTH, SHIPHEIGHT);
     dMassAdjust(&mass, SHIPMASS);
     dBodySetMass(body, &mass);
 
-    box = dCreateBox(0,SHIPLENGTH*0.05,SHIPWIDTH*0.05,SHIPHEIGHT*0.05);
+    box = dCreateBox(0,SHIPLENGTH,SHIPWIDTH,SHIPHEIGHT);
     dGeomSetBody(box,body);
+
+    //shipSpace = dSimpleSpaceCreate(space);
+    dSpaceAdd (space, box);
 }
 
 void Player::draw(){
@@ -185,7 +205,7 @@ void Player::draw(){
     modelBox.setPosition(pos_ode[0], pos_ode[1], pos_ode[2]);
     playerModel.setPosition(pos_ode[0], pos_ode[1], pos_ode[2]);
 
-    //modelBox.draw();
+    modelBox.draw();
     playerModel.drawFaces();
     ofPopMatrix();
     //cout<<angle<<endl;
@@ -208,26 +228,30 @@ void Player::update(int keys[]){
     const dReal* rot_ode = dBodyGetQuaternion(body);
     dBodySetQuaternion(body, rot_ode);
     dBodyAddRelForce(body, speed, 0.0, 0.0);
-
     const dReal* pos_ode = dBodyGetPosition(body);
     camX = pos_ode[0];
     camY = pos_ode[1];
     camZ = pos_ode[2];
     rad = -1 * (modelBox.getRollRad() - 1.5);
+    dBodyAddRelForce(body, 0, 0, 0.5);
 }
 
 
-Asteroid::Asteroid(dWorldID world){
+Asteroid::Asteroid(dWorldID world, dSpaceID space){
     body = dBodyCreate(world);
-    dBodySetPosition(body, 10.0, 0.0, STARTZ);
-    dMassSetBox(&mass, 1, ASTLENGTH*0.05, ASTWIDTH*0.05, ASTHEIGHT*0.05);
+    dMassSetBox(&mass, 1, ASTLENGTH*0.05, ASTWIDTH*0.05, SHIPHEIGHT*0.05);
     dMassAdjust(&mass, ASTMASS);
     dBodySetMass(body, &mass);
-    box = dCreateBox(0, ASTLENGTH*0.05, ASTWIDTH*0.05, ASTHEIGHT*0.05);
+    box = dCreateBox(0, ASTLENGTH, ASTWIDTH, SHIPHEIGHT);
     dGeomSetBody(box, body);
+    dBodySetPosition(body, 10.0, 0.0, STARTZ);
 
-    asteroidBox.setScale(ASTLENGTH*0.05, ASTWIDTH*0.05, ASTHEIGHT*0.05);
-    asteroidBox.setPosition(10, 0, STARTZ);
+    asteroidBox.setScale(ASTLENGTH*0.05, ASTWIDTH*0.05, SHIPHEIGHT*0.05);
+    asteroidBox.setPosition(10.0, 0.0, STARTZ);
+
+    //astSpace = dSimpleSpaceCreate(space);
+    dSpaceAdd(space, box);
+
 
 }
 
