@@ -1,14 +1,15 @@
 #include "ofApp.h"
+#include <cstdlib>
 
-#define SHIPMASS 10.01
-#define STARTZ 1.2
-#define SHIPLENGTH 0.5
-#define SHIPWIDTH 0.4
-#define SHIPHEIGHT 0.15
-#define ASTMASS 0.5
-#define ASTWIDTH 0.3
-#define ASTHEIGHT 0.10
-#define ASTLENGTH 0.4
+#define SHIPMASS 1.00f
+#define STARTZ 1.2f
+#define SHIPLENGTH 0.5f
+#define SHIPWIDTH 0.4f
+#define SHIPHEIGHT 0.15f
+#define ASTMASS 100.5f
+#define ASTWIDTH 0.5f
+#define ASTHEIGHT 0.5f
+#define ASTLENGTH 0.5f
 
 //static const dVector3 yunit = { 0, 1, 0 }, zunit = { 0, 0, 1 };
 
@@ -21,13 +22,21 @@ void ofApp::setup(){
     dWorldSetGravity(world,0.0,0.0,-0.5);
     space = dHashSpaceCreate(0);
     contactgroup = dJointGroupCreate(0);
-    ground = dCreatePlane (space,0,0,1,0);
+    //ground = dCreatePlane (space,0,0,1,0);
 
     //Set up player
     player = new Player(world, space);
 
+    int rand();
+
+    //(rand() % 100)*3 + 1
+    //(rand() % 36)*10
+
     //Set up asteroids
-    asteroids[0] = new Asteroid(world, space);
+    //asteroids[0] = new Asteroid(world, space, 30, 0, (2*M_PI)/9);
+    for(int i=0; i<5; i++){
+        asteroids[i] = new Asteroid(world, space, ((rand() % 100)*1 + 1), ((rand() % 100)*1 + 1), (((rand() % 36)*10))*(M_PI/180));
+    }
 
     // Set up the OpenFrameworks camera
     cam.setAutoDistance(false);
@@ -39,9 +48,12 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
-    player->update(keys);
-    dSpaceCollide (space,0,&nearCallback);
-    dWorldStep (world, 0.05);
+    dWorldStep (world, 0.05f);
+    player->update(keys, world, space);
+    for(int i=0; i<5; i++){
+        asteroids[i]->update();
+    }
+    dSpaceCollide (space, nullptr ,&nearCallback);
 }
 //--------------------------------------------------------------
 void ofApp::draw(){
@@ -49,7 +61,7 @@ void ofApp::draw(){
     ofBackground(00, 00, 00, 00);
 
     ofVec3f upVector;
-    cam.setPosition((player->camX - (sin(player->rad)*10.0)), (player->camY - (cos(player->rad)*10.0)), 4);
+    cam.setPosition((player->camX - (sin(player->rad)*10.0)), (player->camY - (cos(player->rad)*10.0)), 7.0f);
     upVector.set(0.0,  0.0, 1.0);
     cam.lookAt({player->camX, player->camY, 0.5}, upVector);
     cam.begin();
@@ -57,8 +69,8 @@ void ofApp::draw(){
 
     ofEnableDepthTest();
 
-    ofSetColor(ofColor::grey);
-    ofDrawPlane(300,300);
+    ofSetColor(ofColor::black);
+    ofDrawPlane(100,100);
 
     ofSetColor(ofColor::black);
     ofTranslate(0,0,1);
@@ -66,7 +78,9 @@ void ofApp::draw(){
     ofTranslate(0,0,0);
     //ofDrawBox((*player).x,(*player).y, 1, 2, 4, 1);
     player->draw();
-    asteroids[0]->draw();
+    for(int i=0; i<5; i++){
+        asteroids[i]->draw();
+    }
 
     ofSetColor(255,255,255,255);
 
@@ -91,9 +105,10 @@ void ofApp::collide(dGeomID o1, dGeomID o2)
     int i,n;
 
     // only collide things with the ground
-    int g1 = (o1 == asteroids[0]->box || o1 == ground);
-    int g2 = (o2 == asteroids[0]->box || o2 == ground);
+    int g1 = (o1 == asteroids[0]->box || o1 == asteroids[1]->box || o1 == asteroids[2]->box || o1 == asteroids[3]->box || o1 == asteroids[4]->box);
+    int g2 = (o2 == asteroids[0]->box || o2 == asteroids[1]->box || o2 == asteroids[2]->box || o2 == asteroids[3]->box || o2 == asteroids[4]->box);
     if(!(g1 ^ g2)) return;
+    cout<<"Colliding!"<<endl;
 
     const int N = 10;  // maximum number of contacts to be generated
     dContact contact[N];
@@ -103,10 +118,10 @@ void ofApp::collide(dGeomID o1, dGeomID o2)
         contact[i].surface.mode = dContactSlip1 | dContactSlip2 |
           dContactSoftERP | dContactSoftCFM | dContactApprox1;
         contact[i].surface.mu = dInfinity;
-        contact[i].surface.slip1 = 0.5;
-        contact[i].surface.slip2 = 0.5;
-        contact[i].surface.soft_erp = 0.2;
-        contact[i].surface.soft_cfm = 0.1;
+        contact[i].surface.slip1 = 0.1;
+        contact[i].surface.slip2 = 0.1;
+        contact[i].surface.soft_erp = 20.5;  //0.5
+        contact[i].surface.soft_cfm = 0.2;  //0.2
         dJointID c = dJointCreateContact (world,contactgroup,&contact[i]);
         dJointAttach (c,
                       dGeomGetBody(contact[i].geom.g1),
@@ -127,68 +142,31 @@ void ofApp::keyReleased(int key){
 }
 
 //--------------------------------------------------------------
-void ofApp::mouseMoved(int x, int y ){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseDragged(int x, int y, int button){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mousePressed(int x, int y, int button){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseReleased(int x, int y, int button){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseEntered(int x, int y){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseExited(int x, int y){
-
-}
-
-//--------------------------------------------------------------
 void ofApp::windowResized(int w, int h){
 
 }
 
-//--------------------------------------------------------------
-void ofApp::gotMessage(ofMessage msg){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::dragEvent(ofDragInfo dragInfo){
-
-}
-
 Player::Player(dWorldID world, dSpaceID space){
+    //Create Bounding Box for Spaceship to map Spaceship Rotation/Position
     modelBox.setScale(0.05*(SHIPLENGTH+0.11),0.05*SHIPWIDTH,0.05*SHIPHEIGHT);
     modelBox.setPosition(0,0,STARTZ);
 
+    //Load Spaceship Model and scale down to sensible size
     playerModel.loadModel("Space_ship.dae");
     playerModel.setScale(0.005,0.005,0.005);
 
+    //Create Physics Bod
     body = dBodyCreate(world);
-    dBodySetPosition(body, 0, 0, STARTZ);
+    dBodySetPosition(body, 0.0f, 0.0f, STARTZ);
     dMassSetBox(&mass,1,SHIPLENGTH, SHIPWIDTH, SHIPHEIGHT);
     dMassAdjust(&mass, SHIPMASS);
     dBodySetMass(body, &mass);
 
-    box = dCreateBox(0,SHIPLENGTH,SHIPWIDTH,SHIPHEIGHT);
+    box = dCreateBox(space,SHIPLENGTH,SHIPWIDTH,SHIPHEIGHT);
     dGeomSetBody(box,body);
 
     //shipSpace = dSimpleSpaceCreate(space);
-    dSpaceAdd (space, box);
+    //dSpaceAdd (space, box);
 }
 
 void Player::draw(){
@@ -196,6 +174,8 @@ void Player::draw(){
     const dReal* pos_ode = dBodyGetPosition(body);
     const dReal* rot_ode = dBodyGetQuaternion(body);
 
+    //dBodySetTorque(body, 0.0f, 0.0f, 0.0f);
+    dBodySetPosition(body, pos_ode[0], pos_ode[1], STARTZ);
 
     ofQuaternion q(rot_ode[1], rot_ode[2], rot_ode[3], rot_ode[0]);
     float theta, x, y, z;
@@ -205,23 +185,36 @@ void Player::draw(){
     modelBox.setPosition(pos_ode[0], pos_ode[1], pos_ode[2]);
     playerModel.setPosition(pos_ode[0], pos_ode[1], pos_ode[2]);
 
-    modelBox.draw();
+    //modelBox.draw();
     playerModel.drawFaces();
     ofPopMatrix();
     //cout<<angle<<endl;
+
+    for(int i=0; i<3; i++){
+        //cout<<bullets[i];
+        if(bulletNum>0){
+            cout<<i<< " is ready"<<endl;
+            bullets[i]->draw();
+        }
+    }
 }
 
-void Player::update(int keys[]){
+void Player::update(int keys[], dWorldID world, dSpaceID space){
     if(keys['q']) ofExit();
-    if(keys[OF_KEY_UP]){ accelerating = true; if(speed<4.0) speed += 0.5;}
+    if(keys[OF_KEY_UP]){ accelerating = true; if(speed<4.0f) speed += 0.5f;}
     else{if(speed >= 1.0f) speed -= 1.0f; else speed = 0;}
-    if(keys[OF_KEY_LEFT]){angle += M_PI/45;}
-    if(keys[OF_KEY_RIGHT]){ angle -= M_PI/45;}
+    if(keys[OF_KEY_LEFT]){angle += M_PI/90;}
+    if(keys[OF_KEY_RIGHT]){ angle -= M_PI/90;}
+    if(keys[OF_KEY_RIGHT_CONTROL]){
+        keys[OF_KEY_RIGHT_CONTROL] = 0;
+        cout<<"Let's Create this bullet"<<endl;
+        shoot(world, space);
+    }
 
     dMatrix3 R;
     if(angle != 0.0f){
-        if(angle >= 2*M_PI) angle = angle - 2*M_PI;
-        else if(angle<= 2*M_PI) angle = angle + 2*M_PI;
+        if(angle >= 2.0f*M_PI) angle = angle - 2.0f*M_PI;
+        else if(angle<= 2.0f*M_PI) angle = angle + 2.0f*M_PI;
         dRFromAxisAndAngle(R, 0.0, 0.0, 1.0, angle);
         dBodySetRotation(body, R);
     }
@@ -233,37 +226,89 @@ void Player::update(int keys[]){
     camY = pos_ode[1];
     camZ = pos_ode[2];
     rad = -1 * (modelBox.getRollRad() - 1.5);
-    dBodyAddRelForce(body, 0, 0, 0.5);
+
+    //for(int i=0; i<3; i++){
+    //    bullets[i]->update()
+    //}
+}
+
+void Player::shoot(dWorldID world, dSpaceID space){
+    cout<<"Should we fire this bullet"<<endl;
+    const dReal* pos_ode = dBodyGetPosition(body);
+    for(int i=0; i<3; i++){
+        if(bullets[i] == NULL){
+            cout<<"I think we should"<<endl;
+            bulletNum++;
+            bullets[i] = new Bullet(world, space, pos_ode[0], pos_ode[1]);
+            break;
+        }
+    }
 }
 
 
-Asteroid::Asteroid(dWorldID world, dSpaceID space){
+Asteroid::Asteroid(dWorldID world, dSpaceID space, float x, float y, float angle){
     body = dBodyCreate(world);
-    dMassSetBox(&mass, 1, ASTLENGTH*0.05, ASTWIDTH*0.05, SHIPHEIGHT*0.05);
+    dMassSetBox(&mass, 1, ASTLENGTH*0.05, ASTWIDTH*0.05, ASTHEIGHT*0.05);
     dMassAdjust(&mass, ASTMASS);
     dBodySetMass(body, &mass);
-    box = dCreateBox(0, ASTLENGTH, ASTWIDTH, SHIPHEIGHT);
+    box = dCreateBox(space, ASTLENGTH, ASTWIDTH, ASTHEIGHT);
     dGeomSetBody(box, body);
-    dBodySetPosition(body, 10.0, 0.0, STARTZ);
+    cout<<x<<" "<<y<<endl;
+    dBodySetPosition(body, x, y, STARTZ);
 
-    asteroidBox.setScale(ASTLENGTH*0.05, ASTWIDTH*0.05, SHIPHEIGHT*0.05);
+    asteroidBox.setScale(ASTLENGTH*0.05, ASTWIDTH*0.05, ASTHEIGHT*0.05);
     asteroidBox.setPosition(10.0, 0.0, STARTZ);
 
-    //astSpace = dSimpleSpaceCreate(space);
-    dSpaceAdd(space, box);
-
+    dMatrix3 R;
+    cout<<angle<<endl;
+    dRFromAxisAndAngle(R, 0.0, 0.0, 1.0, angle);
+    dBodySetRotation(body, R);
+    dBodyAddRelForce(body, 5.0f, 0.0f, 0.0f);
 
 }
 
 void Asteroid::update(){
-    const dReal* pos_ode = dBodyGetPosition(body);
-    const dReal* rot_ode = dBodyGetQuaternion(body);
-
-    asteroidBox.setPosition(pos_ode[0], pos_ode[1], pos_ode[2]);
-
 }
 
 void Asteroid::draw(){
+    dBodySetTorque(body, 0.0f, 0.0f, 0.0f);
+    const dReal* pos_ode = dBodyGetPosition(body);
+    const dReal* rot_ode = dBodyGetQuaternion(body);
+    dBodySetPosition(body, pos_ode[0], pos_ode[1], STARTZ);
+
+    asteroidBox.setGlobalOrientation(glm::quat(rot_ode[0], rot_ode[1], rot_ode[2], rot_ode[3]));
+    asteroidBox.setPosition(pos_ode[0], pos_ode[1], STARTZ);
+    ofSetColor(ofColor::grey);
     asteroidBox.draw();
+
+}
+
+Bullet::Bullet(dWorldID world, dSpaceID space, float x, float y){
+    cout<<"Bullet Time"<<endl;
+
+    //OF Bounding Box
+    modelCyl.set(0.01f, 0.5f);
+    modelCyl.setPosition(x+0.5, y+0.5, STARTZ);
+
+    body = dBodyCreate(world);
+    dBodySetPosition(body, 0.0f, 0.0f, STARTZ);
+    dMassSetCylinder(&mass, 1.0f, 1, 0.1f, 0.5f);
+    dMassAdjust(&mass, 0.01f);
+    dBodySetMass(body, &mass);
+
+    cyl = dCreateCylinder(space, 0.1f, 0.5f);
+    dGeomSetBody(cyl, body);
+
+
+}
+
+void Bullet::draw(){
+    cout<<"drawing"<<endl;
+    const dReal* pos_ode = dBodyGetPosition(body);
+    const dReal* rot_ode = dBodyGetQuaternion(body);
+
+    dBodySetPosition(body, pos_ode[0], pos_ode[1], STARTZ);
+    ofSetColor(ofColor::white);
+    modelCyl.draw();
 
 }

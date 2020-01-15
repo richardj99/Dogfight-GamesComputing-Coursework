@@ -4,11 +4,26 @@
 #include "ode/ode.h"
 #include "ofxAssimpModelLoader.h"
 
+class Bullet{
+public:
+    Bullet(dWorldID world, dSpaceID space, float x, float y);
+    void draw();
+
+    ofCylinderPrimitive modelCyl;
+    dBodyID body;
+    dMass mass;
+    dGeomID cyl;
+    bool fired = false;
+
+
+};
+
 class Player{
 public:
     Player(dWorldID world, dSpaceID space);
     void draw();
-    void update(int keys[]);
+    void update(int keys[], dWorldID world, dSpaceID space);
+    void shoot(dWorldID world, dSpaceID space);
 
     dReal* getLocation();
 
@@ -21,18 +36,19 @@ public:
     dBodyID body;
     dMass mass;
     dGeomID box;
-    dJointID joint;
     dReal speed=0;
     dReal steer=0;
     dReal angle=0;
-    dSpaceID shipSpace;
     float camX, camY, camZ, rad;
+
+    Bullet* bullets[3];
+    int bulletNum = 0;
 
 };
 
 class Asteroid{
 public:
-    Asteroid(dWorldID world, dSpaceID space);
+    Asteroid(dWorldID world, dSpaceID space, float x, float y, float angle);
     void update();
     void draw();
 
@@ -41,7 +57,6 @@ public:
     dMass mass;
     dGeomID box;
     dReal speed=5;
-    dSpaceID astSpace;
 
 };
 
@@ -55,22 +70,14 @@ public:
 
     void keyPressed(int key);
     void keyReleased(int key);
-    void mouseMoved(int x, int y );
-    void mouseDragged(int x, int y, int button);
-    void mousePressed(int x, int y, int button);
-    void mouseReleased(int x, int y, int button);
-    void mouseEntered(int x, int y);
-    void mouseExited(int x, int y);
     void windowResized(int w, int h);
-    void dragEvent(ofDragInfo dragInfo);
-    void gotMessage(ofMessage msg);
 
     ofEasyCam cam;
     ofLight light;
     dWorldID world;
     dSpaceID space;
     Player *player;
-    Asteroid* asteroids[1];
+    Asteroid* asteroids[5];
     dJointGroupID contactgroup;
     dGeomID ground;
 
