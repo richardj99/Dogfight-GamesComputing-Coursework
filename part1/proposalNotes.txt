@@ -1,0 +1,45 @@
+Section 1 - 500/1000:
+
+Asteroids 3D Version:
+
+Square arena
+Player controls a spaceship entity around an arena.
+Player can accelarate their
+Camera sits just behind the user and follows movements the spaceship makes
+Arena contains several asteroids that move around the screen
+If an asteroid collides with another asteroid, they bounce off each other.
+
+
+Controls: Forward - Accelerate
+
+--------------------------------------------------------------------------------------------
+Justification 1000/2000:
+
+Argument for mastery:
+
+-Ship will require acceleration and deceleration rather than linear traversal
+
+-Change of camera perspective from Asteroids adds a sense of urgency (Asteroids is seen more as an RTS, Dogfight relies more on reflexes).
+
+-Pattern Matching --> Predict physics actions (collision resolution).
+
+-Based on a high-score mentality
+	TOF: "Physical challenges alone aren't fun. The feeling of triumph when you break a personal record is" --> Relate back to games.
+	
+---
+Argument for Fantasy Element:
+	TOF: "We also enjoy visceral experiences of various sorts -- these are often challenges to ourselves."
+
+---
+Argument for Nostalgia:
+	
+-Designed in mind of Atari Jaguar graphics (polgonal).
+	TOF: Aesthetic Appreciation isn't always fun, but it's certainly enjoyable.
+	TOF: sensawunda
+
+
+--------------------------------------------------------------------------------------------
+ODE/OF Justification 500/1000:
+
+
+
